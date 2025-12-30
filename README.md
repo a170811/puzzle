@@ -58,6 +58,10 @@ open index.html
 - **回溯算法**：使用深度優先搜尋（DFS）求解拼圖
 - **響應式設計**：自動適配各種螢幕尺寸
 
+## 📚 參考來源
+
+本專案參考自 [@ee_days 的 Threads 貼文](https://www.threads.com/@ee_days/post/DS2UCH6D4X6?xmt=AQF0fSkbIidu2mb58qq7QfUTqBU4j7ka5CoOys5fv412gOMwuU8HasAGzXLueJ1TKC5SmNSDnw&slof=1)，展示了經典的 Pentomino 拼圖遊戲。
+
 ## 📄 授權
 
 此專案為開源專案，歡迎自由使用和修改。
