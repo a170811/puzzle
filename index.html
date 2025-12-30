@@ -2,45 +2,70 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>互動式積木求解器 - 優化版</title>
+    <title>精緻版積木拼圖求解器</title>
     <style>
-        body { font-family: sans-serif; background-color: #f4ece1; display: flex; flex-direction: column; align-items: center; padding: 20px; user-select: none; }
-        .board-wrapper { padding: 15px; background: #c09f7a; border: 10px solid #704214; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
-        .grid { display: grid; grid-template-columns: repeat(10, 42px); grid-template-rows: repeat(6, 42px); gap: 1px; background-color: #5d3a1a; }
-        .cell { width: 42px; height: 42px; background-color: #fff9e6; display: flex; align-items: center; justify-content: center; font-size: 10px; color: rgba(0,0,0,0.1); }
-        .cell.occupied { border: 1px solid rgba(0,0,0,0.1); }
+        :root {
+            --bg-color: #f0f2f5;
+            --wood-dark: #5d3a1a;
+            --wood-light: #c09f7a;
+            --border-color: #8b4513;
+        }
+
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-color); display: flex; flex-direction: column; align-items: center; padding: 20px; user-select: none; }
         
-        .tray { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; width: 90%; max-width: 900px; margin-top: 20px; padding: 15px; background: white; border-radius: 10px; }
-        .piece-preview { cursor: pointer; display: grid; border: 2px solid transparent; padding: 5px; }
-        .piece-preview.selected { border-color: #e74c3c; background: #ffeeee; box-shadow: 0 0 8px rgba(231,76,60,0.5); }
-        .mini-cell { width: 14px; height: 14px; border: 0.1px solid rgba(255,255,255,0.2); }
-
-        .controls { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; }
-        button { padding: 12px 20px; font-size: 16px; font-weight: bold; cursor: pointer; border: none; border-radius: 5px; color: white; transition: 0.2s; }
+        /* 控制區 */
+        .controls { margin-bottom: 20px; display: flex; gap: 15px; align-items: flex-start; }
+        .btn-group { display: flex; flex-direction: column; gap: 10px; }
+        button { padding: 12px 24px; font-size: 15px; font-weight: bold; cursor: pointer; border: none; border-radius: 8px; color: white; transition: all 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         #solveBtn { background: #27ae60; }
-        #solveBtn:hover { background: #2ecc71; }
+        #solveBtn:hover { background: #2ecc71; transform: translateY(-1px); }
         #solveBtn:disabled { background: #bdc3c7; cursor: wait; }
-        #resetBtn { background: #7f8c8d; }
-        .hint { background: #fff; padding: 10px; border-radius: 5px; font-size: 13px; color: #555; line-height: 1.5; border: 1px solid #ddd; }
+        #resetBtn { background: #e67e22; }
+        .hint { background: white; padding: 12px 20px; border-radius: 10px; font-size: 13px; color: #444; border-left: 5px solid var(--border-color); line-height: 1.6; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
 
-        /* 積木顏色定義 */
-        .p_P { background-color: #a349a4; } .p_F { background-color: #00a2e8; }
-        .p_L { background-color: #ff7f27; } .p_T { background-color: #4b0082; }
-        .p_W { background-color: #22b14c; } .p_U { background-color: #fff200; }
-        .p_V { background-color: #b5e61d; } .p_Z { background-color: #ed1c24; }
-        .p_I { background-color: #ff4500; } .p_Y { background-color: #ffd700; }
-        .p_X { background-color: #7f7f7f; } .p_N { background-color: #3f48cc; }
+        /* 木盒容器 */
+        .board-wrapper { padding: 12px; background: var(--wood-light); border: 12px solid var(--border-color); border-radius: 12px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); margin-bottom: 30px; }
+        .grid { display: grid; grid-template-columns: repeat(10, 40px); grid-template-rows: repeat(6, 40px); gap: 1px; background-color: var(--wood-dark); border: 1px solid var(--wood-dark); }
+        .cell { width: 40px; height: 40px; background-color: #fffbe6; transition: background 0.2s; cursor: pointer; position: relative; }
+        .cell:hover { background-color: #fff0b3; }
+        .cell.occupied { border: 1px solid rgba(255,255,255,0.25); box-sizing: border-box; }
+
+        /* 零件盤優化 */
+        .tray { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; width: 100%; max-width: 950px; padding: 25px; background: rgba(255,255,255,0.7); border-radius: 15px; border: 1px dashed #ccc; }
+        .piece-preview { cursor: pointer; display: grid; gap: 1px; padding: 4px; border-radius: 4px; border: 2px solid transparent; transition: all 0.2s; }
+        .piece-preview:hover { background: rgba(0,0,0,0.03); }
+        .piece-preview.selected { border-color: #e74c3c; background: #fff; box-shadow: 0 0 12px rgba(231,76,60,0.3); }
+
+        .mini-cell { width: 16px; height: 16px; box-sizing: border-box; }
+        .mini-cell.filled { border: 1px solid rgba(0,0,0,0.1); border-radius: 2px; }
+
+        /* 積木顏色 - 根據圖片風格 */
+        .p_P { background-color: #a349a4; } /* 紫色 */
+        .p_F { background-color: #00a2e8; } /* 藍色 */
+        .p_L { background-color: #ff7f27; } /* 橘色 */
+        .p_T { background-color: #4b0082; } /* 深紫 */
+        .p_W { background-color: #22b14c; } /* 綠色 */
+        .p_U { background-color: #fff200; } /* 黃色 */
+        .p_V { background-color: #b5e61d; } /* 淺綠 */
+        .p_Z { background-color: #ed1c24; } /* 紅色 */
+        .p_I { background-color: #ff4500; } /* 長條紅 */
+        .p_Y { background-color: #ffd700; } /* 側邊黃 */
+        .p_X { background-color: #7f7f7f; } /* 灰色 */
+        .p_N { background-color: #3f48cc; } /* 深藍 */
     </style>
 </head>
 <body>
 
     <div class="controls">
-        <button id="solveBtn">根據現狀完成拼圖</button>
-        <button id="resetBtn">清空重設</button>
+        <div class="btn-group">
+            <button id="solveBtn">根據現狀完成拼圖</button>
+            <button id="resetBtn">清空重設</button>
+        </div>
         <div class="hint">
-            1. 點選下方零件盤零件 <br>
-            2. <b>R</b> 鍵旋轉，<b>F</b> 鍵翻轉 <br>
-            3. 點擊木盒放置，<b>右鍵</b>點擊木盒積木可取下
+            <b>操作指南：</b><br>
+            • <b>點選</b>下方積木，在木盒<b>左鍵點擊</b>放置。<br>
+            • 選中積木後，按 <b>R</b> 鍵旋轉，<b>F</b> 鍵翻轉。<br>
+            • <b>右鍵點擊</b>木盒內的積木可將其取下。
         </div>
     </div>
 
@@ -51,6 +76,7 @@
     <div id="tray" class="tray"></div>
 
 <script>
+// 形狀數據 (嚴格遵守使用者確認的矩陣)
 const SHAPES_DATA = {
     P:[[1,1],[1,1],[1,0]], F:[[0,1,1],[1,1,0],[0,1,0]], L:[[1,0],[1,0],[1,0],[1,1]],
     T:[[1,1,1],[0,1,0],[0,1,0]], W:[[1,0,0],[1,1,0],[0,1,1]], U:[[1,0,1],[1,1,1]],
@@ -64,31 +90,25 @@ let usedPieces = new Set();
 let selectedPieceId = null;
 let currentVariant = null;
 
-// --- 矩陣操作 ---
-function rotate(m) { return m[0].map((_, i) => m.map(row => row[i]).reverse()); }
-function flip(m) { return m.map(row => [...row].reverse()); }
-function getUniqueVariants(shape) {
+// 工具函式
+const rotate = (m) => m[0].map((_, i) => m.map(row => row[i]).reverse());
+const flip = (m) => m.map(row => [...row].reverse());
+const getVariants = (shape) => {
     let vars = [];
     let curr = shape;
-    for (let i = 0; i < 4; i++) {
-        vars.push(curr); vars.push(flip(curr));
-        curr = rotate(curr);
-    }
+    for(let i=0; i<4; i++) { vars.push(curr); vars.push(flip(curr)); curr = rotate(curr); }
     let seen = new Set();
     return vars.filter(v => {
         let s = JSON.stringify(v);
-        if (seen.has(s)) return false;
+        if(seen.has(s)) return false;
         seen.add(s); return true;
     });
-}
+};
 
-// 預先計算所有積木的變體
 const PIECE_VARIANTS = {};
-Object.keys(SHAPES_DATA).forEach(id => {
-    PIECE_VARIANTS[id] = getUniqueVariants(SHAPES_DATA[id]);
-});
+Object.keys(SHAPES_DATA).forEach(id => PIECE_VARIANTS[id] = getVariants(SHAPES_DATA[id]));
 
-// --- UI 渲染 ---
+// UI 渲染
 function renderTray() {
     const tray = document.getElementById('tray');
     tray.innerHTML = '';
@@ -97,10 +117,11 @@ function renderTray() {
         const div = document.createElement('div');
         div.className = `piece-preview ${selectedPieceId === id ? 'selected' : ''}`;
         const shape = (selectedPieceId === id) ? currentVariant : SHAPES_DATA[id];
-        div.style.gridTemplateColumns = `repeat(${shape[0].length}, 14px)`;
+        
+        div.style.gridTemplateColumns = `repeat(${shape[0].length}, 16px)`;
         shape.flat().forEach(v => {
             const c = document.createElement('div');
-            c.className = 'mini-cell' + (v ? ` p_${id}` : '');
+            c.className = 'mini-cell' + (v ? ` filled p_${id}` : '');
             div.appendChild(c);
         });
         div.onclick = () => {
@@ -118,10 +139,7 @@ function renderBoard() {
     for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
             const cell = document.createElement('div');
-            cell.className = 'cell';
-            if (boardState[r][c]) {
-                cell.classList.add('occupied', 'p_' + boardState[r][c]);
-            }
+            cell.className = 'cell' + (boardState[r][c] ? ' occupied p_' + boardState[r][c] : '');
             cell.onclick = () => placeAt(r, c);
             cell.oncontextmenu = (e) => { e.preventDefault(); removeAt(r, c); };
             board.appendChild(cell);
@@ -129,9 +147,26 @@ function renderBoard() {
     }
 }
 
+// 邏輯處理
+function canPlace(grid, v, r, c) {
+    for(let i=0; i<v.length; i++) {
+        for(let j=0; j<v[i].length; j++) {
+            if(v[i][j]) {
+                const tr = r+i, tc = c+j;
+                if(tr>=ROWS || tc>=COLS || tr<0 || tc<0 || grid[tr][tc]!==0) return false;
+            }
+        }
+    }
+    return true;
+}
+
+function applyPiece(grid, v, r, c, val) {
+    for(let i=0; i<v.length; i++) for(let j=0; j<v[i].length; j++) if(v[i][j]) grid[r+i][c+j] = val;
+}
+
 function placeAt(r, c) {
-    if (!selectedPieceId) return;
-    if (canPlace(boardState, currentVariant, r, c)) {
+    if(!selectedPieceId) return;
+    if(canPlace(boardState, currentVariant, r, c)) {
         applyPiece(boardState, currentVariant, r, c, selectedPieceId);
         usedPieces.add(selectedPieceId);
         selectedPieceId = null; currentVariant = null;
@@ -141,108 +176,69 @@ function placeAt(r, c) {
 
 function removeAt(r, c) {
     const id = boardState[r][c];
-    if (!id) return;
-    for(let i=0; i<ROWS; i++) for(let j=0; j<COLS; j++) if(boardState[i][j]===id) boardState[i][j]=0;
+    if(!id) return;
+    for(let i=0; i<6; i++) for(let j=0; j<10; j++) if(boardState[i][j]===id) boardState[i][j]=0;
     usedPieces.delete(id);
     renderBoard(); renderTray();
 }
 
-function canPlace(grid, v, r, c) {
-    for(let i=0; i<v.length; i++) {
-        for(let j=0; j<v[i].length; j++) {
-            if (v[i][j]) {
-                const tr = r+i, tc = c+j;
-                if (tr>=ROWS || tc>=COLS || tr<0 || tc<0 || grid[tr][tc]!==0) return false;
-            }
-        }
-    }
-    return true;
-}
-
-function applyPiece(grid, v, r, c, val) {
-    for(let i=0; i<v.length; i++) for(let j=0; j<v[i].length; j++) if(v[i][j]) grid[r+i][c+j]=val;
-}
-
-// --- 核心演算法：修正後的快速回溯 ---
-function solve(grid, pieceIds) {
-    if (pieceIds.length === 0) return grid;
-
-    // 找到第一個空格
+// 求解器
+function solve(grid, ids) {
+    if(ids.length === 0) return grid;
     let r = -1, c = -1;
-    for (let i = 0; i < ROWS; i++) {
-        for (let j = 0; j < COLS; j++) {
-            if (grid[i][j] === 0) { r = i; c = j; break; }
-        }
-        if (r !== -1) break;
+    for(let i=0; i<6; i++) {
+        for(let j=0; j<10; j++) if(grid[i][j]===0) { r=i; c=j; break; }
+        if(r!==-1) break;
     }
-    if (r === -1) return grid;
+    if(r===-1) return grid;
 
-    for (let i = 0; i < pieceIds.length; i++) {
-        const id = pieceIds[i];
-        const variants = PIECE_VARIANTS[id];
-        const nextIds = [...pieceIds.slice(0,i), ...pieceIds.slice(i+1)];
-
-        for (const v of variants) {
-            // 優化點：不再隨機嘗試位置，而是讓積木的「第一個 1」對準「第一個空格」
-            // 找出變體中第一個出現 1 的座標 (vR, vC)
+    for(let i=0; i<ids.length; i++) {
+        const id = ids[i];
+        for(const v of PIECE_VARIANTS[id]) {
             let vR = -1, vC = -1;
             for(let row=0; row<v.length; row++) {
                 let col = v[row].indexOf(1);
-                if(col !== -1) { vR = row; vC = col; break; }
+                if(col!==-1) { vR=row; vC=col; break; }
             }
-
-            const startR = r - vR;
-            const startC = c - vC;
-
-            if (canPlace(grid, v, startR, startC)) {
-                applyPiece(grid, v, startR, startC, id);
-                const result = solve(grid, nextIds);
-                if (result) return result;
-                applyPiece(grid, v, startR, startC, 0); // 回溯
+            if(canPlace(grid, v, r-vR, c-vC)) {
+                applyPiece(grid, v, r-vR, c-vC, id);
+                const res = solve(grid, [...ids.slice(0,i), ...ids.slice(i+1)]);
+                if(res) return res;
+                applyPiece(grid, v, r-vR, c-vC, 0);
             }
         }
     }
     return null;
 }
 
-// 按鈕事件
 document.getElementById('solveBtn').onclick = function() {
-    const btn = this;
-    const originalText = btn.innerText;
-    btn.disabled = true;
-    btn.innerText = "計算中...";
-
-    // 使用 setTimeout 讓 UI 有時間更新「計算中」的文字
+    this.disabled = true;
+    this.innerText = "計算中...";
     setTimeout(() => {
-        const remainingIds = Object.keys(SHAPES_DATA).filter(id => !usedPieces.has(id));
-        const solution = solve(JSON.parse(JSON.stringify(boardState)), remainingIds);
-
-        if (solution) {
-            boardState = solution;
+        const rem = Object.keys(SHAPES_DATA).filter(id => !usedPieces.has(id));
+        const res = solve(JSON.parse(JSON.stringify(boardState)), rem);
+        if(res) {
+            boardState = res;
             usedPieces = new Set(Object.keys(SHAPES_DATA));
-            renderBoard();
-            renderTray();
-            btn.innerText = originalText;
+            renderBoard(); renderTray();
         } else {
-            alert("目前的擺放方式無法完成拼圖！(可能是留下了無法填滿的零散空格)");
-            btn.innerText = originalText;
+            alert("目前格局無解！請調整位置或確保沒有留下死角空間。");
         }
-        btn.disabled = false;
+        this.disabled = false;
+        this.innerText = "根據現狀完成拼圖";
     }, 50);
 };
 
 document.getElementById('resetBtn').onclick = () => location.reload();
 
 window.onkeydown = (e) => {
-    if (!selectedPieceId) return;
-    if (e.key.toLowerCase() === 'r') currentVariant = rotate(currentVariant);
-    if (e.key.toLowerCase() === 'f') currentVariant = flip(currentVariant);
+    if(!selectedPieceId) return;
+    if(e.key.toLowerCase()==='r') currentVariant = rotate(currentVariant);
+    if(e.key.toLowerCase()==='f') currentVariant = flip(currentVariant);
     renderTray();
 };
 
-// 初始化
-renderBoard();
-renderTray();
+renderBoard(); renderTray();
 </script>
 </body>
 </html>
