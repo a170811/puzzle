@@ -23,6 +23,23 @@
         #resetBtn { background: #e67e22; }
         .hint { background: white; padding: 12px 20px; border-radius: 10px; font-size: 13px; color: #444; border-left: 5px solid var(--border-color); line-height: 1.6; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
 
+        /* 手機操作按鈕 */
+        .mobile-controls { display: none; gap: 10px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
+        .mobile-controls.active { display: flex; }
+        .mobile-btn { padding: 15px 25px; font-size: 16px; font-weight: bold; cursor: pointer; border: none; border-radius: 10px; color: white; transition: all 0.2s; box-shadow: 0 3px 8px rgba(0,0,0,0.2); touch-action: manipulation; }
+        .rotate-btn { background: #3498db; }
+        .rotate-btn:active { background: #2980b9; transform: scale(0.95); }
+        .flip-btn { background: #9b59b6; }
+        .flip-btn:active { background: #8e44ad; transform: scale(0.95); }
+        .cancel-btn { background: #e74c3c; }
+        .cancel-btn:active { background: #c0392b; transform: scale(0.95); }
+
+        @media (max-width: 768px) {
+            .hint { font-size: 12px; padding: 10px 15px; }
+            .controls { flex-direction: column; gap: 10px; }
+            .tray { padding: 15px; gap: 15px; }
+        }
+
         /* 木盒容器 */
         .board-wrapper { padding: 12px; background: var(--wood-light); border: 12px solid var(--border-color); border-radius: 12px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); margin-bottom: 30px; }
         .grid { display: grid; grid-template-columns: repeat(10, 40px); grid-template-rows: repeat(6, 40px); gap: 1px; background-color: var(--wood-dark); border: 1px solid var(--wood-dark); }
@@ -63,10 +80,17 @@
         </div>
         <div class="hint">
             <b>操作指南：</b><br>
-            • <b>點選</b>下方積木，在木盒<b>左鍵點擊</b>放置。<br>
-            • 選中積木後，按 <b>R</b> 鍵旋轉，<b>F</b> 鍵翻轉。<br>
-            • <b>右鍵點擊</b>木盒內的積木可將其取下。
+            • <b>點選</b>下方積木，在木盒<b>點擊</b>放置。<br>
+            • 電腦：按 <b>R</b> 鍵旋轉，<b>F</b> 鍵翻轉。<br>
+            • 手機：選中積木後使用下方按鈕操作。<br>
+            • <b>長按</b>木盒內的積木可將其取下。
         </div>
+    </div>
+
+    <div class="mobile-controls" id="mobileControls">
+        <button class="mobile-btn rotate-btn" id="rotateBtn">🔄 旋轉</button>
+        <button class="mobile-btn flip-btn" id="flipBtn">🔁 翻轉</button>
+        <button class="mobile-btn cancel-btn" id="cancelBtn">✖ 取消選擇</button>
     </div>
 
     <div class="board-wrapper">
@@ -89,6 +113,7 @@ let boardState = Array(ROWS).fill(0).map(() => Array(COLS).fill(0));
 let usedPieces = new Set();
 let selectedPieceId = null;
 let currentVariant = null;
+let longPressTimer = null;
 
 // 工具函式
 const rotate = (m) => m[0].map((_, i) => m.map(row => row[i]).reverse());
@@ -127,10 +152,20 @@ function renderTray() {
         div.onclick = () => {
             selectedPieceId = (selectedPieceId === id) ? null : id;
             currentVariant = selectedPieceId ? SHAPES_DATA[id] : null;
+            updateMobileControls();
             renderTray();
         };
         tray.appendChild(div);
     });
+}
+
+function updateMobileControls() {
+    const mobileControls = document.getElementById('mobileControls');
+    if (selectedPieceId) {
+        mobileControls.classList.add('active');
+    } else {
+        mobileControls.classList.remove('active');
+    }
 }
 
 function renderBoard() {
@@ -142,6 +177,32 @@ function renderBoard() {
             cell.className = 'cell' + (boardState[r][c] ? ' occupied p_' + boardState[r][c] : '');
             cell.onclick = () => placeAt(r, c);
             cell.oncontextmenu = (e) => { e.preventDefault(); removeAt(r, c); };
+            
+            // 手機長按支援
+            cell.ontouchstart = (e) => {
+                if (boardState[r][c]) {
+                    longPressTimer = setTimeout(() => {
+                        removeAt(r, c);
+                        longPressTimer = null;
+                    }, 500);
+                }
+            };
+            cell.ontouchend = (e) => {
+                if (longPressTimer) {
+                    clearTimeout(longPressTimer);
+                    longPressTimer = null;
+                    if (!boardState[r][c]) {
+                        placeAt(r, c);
+                    }
+                }
+            };
+            cell.ontouchmove = () => {
+                if (longPressTimer) {
+                    clearTimeout(longPressTimer);
+                    longPressTimer = null;
+                }
+            };
+            
             board.appendChild(cell);
         }
     }
@@ -170,6 +231,7 @@ function placeAt(r, c) {
         applyPiece(boardState, currentVariant, r, c, selectedPieceId);
         usedPieces.add(selectedPieceId);
         selectedPieceId = null; currentVariant = null;
+        updateMobileControls();
         renderBoard(); renderTray();
     }
 }
@@ -179,6 +241,7 @@ function removeAt(r, c) {
     if(!id) return;
     for(let i=0; i<6; i++) for(let j=0; j<10; j++) if(boardState[i][j]===id) boardState[i][j]=0;
     usedPieces.delete(id);
+    updateMobileControls();
     renderBoard(); renderTray();
 }
 
@@ -235,6 +298,26 @@ window.onkeydown = (e) => {
     if(!selectedPieceId) return;
     if(e.key.toLowerCase()==='r') currentVariant = rotate(currentVariant);
     if(e.key.toLowerCase()==='f') currentVariant = flip(currentVariant);
+    renderTray();
+};
+
+// 手機操作按鈕
+document.getElementById('rotateBtn').onclick = () => {
+    if(!selectedPieceId) return;
+    currentVariant = rotate(currentVariant);
+    renderTray();
+};
+
+document.getElementById('flipBtn').onclick = () => {
+    if(!selectedPieceId) return;
+    currentVariant = flip(currentVariant);
+    renderTray();
+};
+
+document.getElementById('cancelBtn').onclick = () => {
+    selectedPieceId = null;
+    currentVariant = null;
+    updateMobileControls();
     renderTray();
 };
 
